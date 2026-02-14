@@ -144,8 +144,12 @@ ENV/
 env.bak/
 venv.bak/
 
-# Instagram session files
+# Instagram session and user data
 session.json
+data/cache/
+data/exports/
+data/history/
+data/results/
 
 # Spyder project settings
 .spyderproject

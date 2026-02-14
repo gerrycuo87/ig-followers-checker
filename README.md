@@ -2,268 +2,212 @@
 
 A Python tool to analyze your Instagram followers and following lists, helping you identify who doesn't follow you back.
 
+Two modes are available:
+- **Manual Export Mode** (recommended) — safe, fast, ToS-compliant
+- **API Mode** (experimental) — slow, risky, requires daily runs for weeks
+
+---
+
 ## Table of Contents
 
-- [Instagram Followers Checker](#instagram-followers-checker)
-  - [Table of Contents](#table-of-contents)
-  - [Features](#features)
-  - [Important Warnings](#important-warnings)
-  - [Prerequisites](#prerequisites)
-  - [Installation](#installation)
-  - [Usage](#usage)
-  - [Configuration](#configuration)
-    - [Session Persistence](#session-persistence)
-    - [Rate Limiting Settings](#rate-limiting-settings)
-    - [Device Settings](#device-settings)
-  - [Understanding the Output](#understanding-the-output)
-  - [Common Errors \& Troubleshooting](#common-errors--troubleshooting)
-    - [1. `LoginRequired` Error](#1-loginrequired-error)
-    - [2. `PleaseWaitFewMinutes` Error](#2-pleasewaitfewminutes-error)
-    - [3. `ChallengeRequired` Error](#3-challengerequired-error)
-    - [4. Session File Errors](#4-session-file-errors)
-  - [Best Practices](#best-practices)
-  - [Limitations](#limitations)
-  - [Future Improvements](#future-improvements)
-  - [Contributing](#contributing)
-  - [License](#license)
+- [Quick Start](#quick-start)
+- [Manual Export Mode](#manual-export-mode-recommended)
+- [API Mode](#api-mode-experimental)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Understanding the Output](#understanding-the-output)
+- [Project Structure](#project-structure)
+- [Limitations](#limitations)
+- [Contributing](#contributing)
+- [License](#license)
 
-## Features
+---
 
-- Login with session persistence (saves session to avoid repeated logins)
-- Fetch followers and following lists for any public Instagram profile
-- Compare lists to find users who don't follow you back
-- Conservative rate limiting to avoid triggering Instagram's anti-bot protection
-- Comprehensive error handling for common Instagram API issues
-- Device mimicking to appear as a legitimate mobile client
+## Quick Start
 
-## Important Warnings
+```bash
+# Install dependencies
+pip install -r requirements.txt
 
-**PLEASE READ BEFORE USING:**
+# Analyze your Instagram export (recommended)
+python igfc.py analyze --export ~/Downloads/instagram-export
 
-1. **Use a dedicated test account** - Do NOT use your main Instagram account
-2. **Instagram's API is restrictive** - This tool uses unofficial APIs that may trigger security checks
-3. **Rate limiting is strict** - Running this script too frequently will get your account temporarily blocked
-4. **Wait times are real** - If you get rate-limited, you must wait 6-24 hours before retrying
-5. **Run sparingly** - Maximum 1-2 times per day when it works
-6. **Account risks** - Your account may be flagged, require verification challenges, or be temporarily restricted
+# Show all available commands
+python igfc.py --help
+```
 
-**Instagram considers automation tools against their Terms of Service. Use at your own risk.**
+---
 
-## Prerequisites
+## Manual Export Mode (Recommended)
 
-- Python 3.8 or higher
-- An Instagram account (preferably a test/throwaway account)
-- Stable internet connection
+This is the primary and recommended way to use the tool.
+
+**Why use it:**
+- 100% ToS-compliant — zero risk of account ban
+- Fast — download takes ~48 hours, analysis is instant
+- Reliable — no API failures or rate limiting
+- Complete — all followers and following in one file
+- Only works for your own account
+
+### How to get your Instagram export
+
+1. Open Instagram → **Settings** → **Security** → **Download Data**
+2. Select **JSON** format and request the download
+3. Wait for Instagram's email (~48 hours)
+4. Download and extract the ZIP file
+5. Run the tool:
+
+```bash
+python igfc.py analyze --export /path/to/extracted-folder
+```
+
+---
+
+## API Mode (Experimental)
+
+This mode fetches data directly from Instagram's API.
+
+> **⚠️ WARNING:** API mode violates Instagram's Terms of Service and risks account suspension. It is extremely slow (16–40 days for large accounts) and must be run daily for weeks. Use Manual Export Mode instead whenever possible.
+
+API mode is only useful if you need to analyze **someone else's public account** and fully understand and accept the risks.
+
+```bash
+python igfc.py api --username YOUR_USERNAME --experimental
+```
+
+The `--experimental` flag is required and triggers multiple confirmation prompts.
+
+---
 
 ## Installation
 
-1. **Clone the repository:**
+**Requirements:** Python 3.8 or higher
 
-   ```bash
-   git clone https://github.com/yourusername/ig-followers-checker.git
-   cd ig-followers-checker
-   ```
+```bash
+git clone https://github.com/yourusername/ig-followers-checker.git
+cd ig-followers-checker
 
-2. **Create and activate a virtual environment:**
+# Create and activate a virtual environment
+python3 -m venv .venv
+source .venv/bin/activate   # On Windows: .venv\Scripts\activate
 
-   ```bash
-   # On Linux/macOS
-   python3 -m venv .venv
-   source .venv/bin/activate
+# Install dependencies
+pip install -r requirements.txt
+```
 
-   # On Windows
-   python -m venv .venv
-   .venv\Scripts\activate
-   ```
-
-3. **Install dependencies:**
-
-   ```bash
-   pip install -r requirements.txt
-   ```
+---
 
 ## Usage
 
-1. **Run the script:**
-
-   ```bash
-   python src/igfc.py
-   ```
-
-2. **Follow the prompts:**
-   - Enter your Instagram username
-   - Enter your Instagram password
-   - Enter the target profile to analyze (or leave blank to analyze your own profile)
-
-3. **Wait for the analysis:**
-   The script will:
-   - Log into Instagram
-   - Fetch user information
-   - Retrieve followers list
-   - Retrieve following list
-   - Compare and display results
-
-## Configuration
-
-### Session Persistence
-
-The tool automatically saves your login session to `session.json` to avoid repeated logins. This helps reduce the risk of rate limiting.
-
-**To force a fresh login:**
+### Command reference
 
 ```bash
-rm session.json
+python igfc.py                                         # Show help
+python igfc.py analyze --export PATH                   # Analyze export
+python igfc.py analyze --interactive                   # Prompt for path interactively
+python igfc.py api --username USER --experimental      # API mode (see warnings above)
+python igfc.py help --download-guide                   # Step-by-step export guide
+python igfc.py --help                                  # Full command documentation
 ```
 
-### Rate Limiting Settings
+### Interactive mode
 
-The script uses conservative delays between requests (configurable in `src/igfc.py`):
+Running `python igfc.py analyze --interactive` will prompt you for the export path if you prefer not to type it on the command line.
 
-- `MIN_DELAY = 2` seconds (minimum delay between requests)
-- `MAX_DELAY = 5` seconds (maximum delay between requests)
-- `OPERATION_COOLDOWN = 3` seconds (delay between major operations)
-
-**Do not reduce these values** - they help prevent rate limiting.
-
-### Device Settings
-
-The tool mimics a OnePlus 3 device running Android 8.0. These settings are configured to appear as a legitimate mobile client to Instagram.
+---
 
 ## Understanding the Output
 
-The script provides a detailed analysis:
-
-```text
+```
 ============================================================
-RESULTS
-============================================================
-Total followers:  150
-Total following:  200
-Not following back: 50 users
+Analysis Results
 ============================================================
 
-Users who don't follow you back:
-------------------------------------------------------------
-    1. @username1            - Full Name 1
-    2. @username2            - Full Name 2
-    ...
-------------------------------------------------------------
+📊 Overview:
+   • Target Username:     @yourname
+   • Total Following:     905
+   • Total Followers:     7,827
+   • Analysis Date:       2025-12-15 14:30:22
+   • Data Source:         manual_export
+
+📈 Breakdown:
+   • Not Following Back:  123 accounts (13.6%)
+   • Mutual Followers:    782 accounts (86.4%)
+   • Fans (follow you):   7,045 accounts
+
+📊 Ratios:
+   • Follower/Following:  8.65:1
+
+┌──────────────────────────────────────────────────────────┐
+│ Accounts Not Following Back:                              │
+├──────────────────────────────────────────────────────────┤
+│   1. @account_one                                        │
+│   2. @account_two                                        │
+│   ...                                                    │
+└──────────────────────────────────────────────────────────┘
 ```
 
-## Common Errors & Troubleshooting
+| Field | Description |
+|-------|-------------|
+| Not Following Back | Accounts you follow that don't follow you back |
+| Mutual Followers | Accounts you both follow each other |
+| Fans | Accounts that follow you but you don't follow back |
 
-### 1. `LoginRequired` Error
+---
 
-**Symptoms:** `403 Forbidden` error when fetching user data, despite successful login
+## Project Structure
 
-**Causes:**
+```
+ig-followers-checker/
+├── igfc.py                          # Main entry point
+├── src/
+│   ├── models.py                    # User and Analysis data models
+│   ├── config.py                    # Configuration constants
+│   ├── analyzer.py                  # API mode orchestrator
+│   │
+│   ├── parsers/
+│   │   ├── manual_export.py         # Instagram JSON export parser
+│   │   └── instagram_api.py         # API-based data fetcher
+│   │
+│   ├── analysis/
+│   │   └── analyzer.py              # Core comparison logic (parser-agnostic)
+│   │
+│   ├── storage/
+│   │   └── cache.py                 # Progress cache for API mode
+│   │
+│   ├── output/                      # Output formatting (in development)
+│   │
+│   └── cli/
+│       ├── main.py                  # CLI entry point and argument parsing
+│       ├── manual_mode.py           # Manual export workflow
+│       └── api_mode.py              # API mode workflow with warnings
+│
+└── tests/
+    ├── test_analysis_engine.py
+    └── test_manual_export_parser.py
+```
 
-- Session not fully authenticated
-- 2FA required but not completed
-- Instagram flagged the login as suspicious
-
-**Solutions:**
-
-- Delete `session.json` and try again
-- Log into Instagram app first to clear security flags
-- Wait 6-24 hours before retrying
-- Ensure 2FA is disabled on the test account
-
-### 2. `PleaseWaitFewMinutes` Error
-
-**Symptoms:** `401 Unauthorized` error with message "Please wait a few minutes before you try again"
-
-**Causes:**
-
-- Too many requests in a short period
-- Instagram detected automated activity
-- Account is temporarily rate-limited
-
-**Solutions:**
-
-- **STOP running the script immediately**
-- Wait 6-24 hours (not just "a few minutes")
-- Use a dedicated test account
-- Run the script less frequently (max 1-2 times/day)
-
-### 3. `ChallengeRequired` Error
-
-**Symptoms:** Account flagged for verification
-
-**Causes:**
-
-- Instagram's anti-bot system detected suspicious activity
-- Too many automated requests
-
-**Solutions:**
-
-- Complete the security challenge in the Instagram app
-- Wait 6-24 hours before retrying
-- Use a dedicated test account for automation
-- Run the script less frequently
-
-### 4. Session File Errors
-
-**Symptoms:** Errors loading `session.json`
-
-**Solutions:**
-
-- Delete the session file: `rm session.json`
-- The script will create a fresh session on next run
-
-## Best Practices
-
-1. **Use a Test Account**
-   - Create a dedicated Instagram account for testing
-   - Don't use your main personal account
-
-2. **Run Sparingly**
-   - Maximum 1-2 times per day
-   - Don't run multiple times in quick succession
-   - Allow 12-24 hours between runs
-
-3. **Monitor for Errors**
-   - If you get rate-limited, STOP immediately
-   - Wait the full 6-24 hours before retrying
-   - Don't try to "work around" rate limits
-
-4. **Keep Dependencies Updated**
-
-   ```bash
-   pip install --upgrade -r requirements.txt
-   ```
-
-5. **Review Instagram's Terms**
-   - Understand the risks
-   - Know that automation may violate Instagram's ToS
+---
 
 ## Limitations
 
-- **Only works with public profiles** (or profiles you follow)
-- **Rate limited by Instagram** - Cannot be used frequently
-- **No 2FA support** - Must disable 2FA on the account
-- **Unofficial API** - May break if Instagram changes their API
-- **Account risks** - May trigger security checks or temporary bans
-- **No historical tracking** (planned for future versions)
-- **No export functionality** (planned for future versions)
+### Manual Export Mode
+- Only works for your own account
+- Requires a one-time manual download step (~48 hour wait)
+- Export must be re-downloaded for updated data
+- No extended metadata (follower counts, verified status, etc.)
 
-## Future Improvements
+### API Mode
+- Violates Instagram Terms of Service
+- Very slow: 16–40 days for accounts with 8k–20k followers
+- Must be run daily; can fail mid-process
+- Risk of account suspension
 
-Planned enhancements:
-
-- **Code modularization** - Break into reusable modules
-- **Environment variables** - Store credentials securely
-- **Export options** - Save results to JSON/CSV/TXT
-- **Historical tracking** - Compare changes over time
-- **Web UI** - Flask/FastAPI dashboard
-- **Enhanced analysis** - Mutual followers, fans, ghost followers
-- **Docker support** - Containerized deployment
-- **CI/CD pipeline** - Jenkins/GitHub Actions integration
-- **Better error recovery** - Automatic retry with exponential backoff
+---
 
 ## Contributing
 
-Contributions are welcome! Please:
+Contributions are welcome!
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
@@ -271,12 +215,10 @@ Contributions are welcome! Please:
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
+---
+
 ## License
 
 This project is provided as-is for educational purposes. Use at your own risk.
 
-**Disclaimer:** This tool uses unofficial Instagram APIs and may violate Instagram's Terms of Service. The authors are not responsible for any consequences of using this tool, including but not limited to account restrictions, bans, or other penalties imposed by Instagram.
-
----
-
-**Created with [instagrapi](https://github.com/adw0rd/instagrapi)** - A Python library for Instagram's private API.
+**Disclaimer:** The API mode uses unofficial Instagram APIs and may violate Instagram's Terms of Service. The authors are not responsible for any consequences, including account restrictions or bans.
