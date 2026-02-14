@@ -61,6 +61,12 @@ For more information, visit: https://github.com/yourusername/ig-followers-checke
         help='Run in interactive mode (prompts for export path)'
     )
     analyze_parser.add_argument(
+        '--no-color',
+        dest='no_color',
+        action='store_true',
+        help='Disable colours in console output (plain text)'
+    )
+    analyze_parser.add_argument(
         '--save',
         action='store_true',
         help='Save analysis to history'
@@ -77,6 +83,19 @@ For more information, visit: https://github.com/yourusername/ig-followers-checke
         type=str,
         metavar='FILE',
         help='Output file path (for csv/json/txt formats)'
+    )
+    analyze_parser.add_argument(
+        '--category',
+        type=str,
+        choices=['not_following_back', 'mutual_followers', 'fans', 'all'],
+        default='not_following_back',
+        help='Which category to export for csv format (default: not_following_back)'
+    )
+    analyze_parser.add_argument(
+        '--all',
+        dest='show_all',
+        action='store_true',
+        help='Print the full not-following-back list in the terminal (default: top 20)'
     )
 
     # API command (experimental mode - not recommended)
@@ -127,18 +146,25 @@ For more information, visit: https://github.com/yourusername/ig-followers-checke
         help='Compare with last analysis from history'
     )
 
-    # Export command
+    # Export command — runs analysis + exports to file in one step
     export_parser = subparsers.add_parser(
         'export',
-        help='Export results to file',
-        description='Export analysis results to various formats'
+        help='Analyze and export results directly to a file',
+        description='Run analysis on an Instagram export and save results to a file'
+    )
+    export_parser.add_argument(
+        '--export',
+        type=str,
+        required=True,
+        metavar='PATH',
+        help='Path to Instagram export directory'
     )
     export_parser.add_argument(
         '--format',
         type=str,
         choices=['csv', 'json', 'txt'],
         required=True,
-        help='Export format'
+        help='Output file format'
     )
     export_parser.add_argument(
         '--output',
@@ -146,6 +172,13 @@ For more information, visit: https://github.com/yourusername/ig-followers-checke
         required=True,
         metavar='FILE',
         help='Output file path'
+    )
+    export_parser.add_argument(
+        '--category',
+        type=str,
+        choices=['not_following_back', 'mutual_followers', 'fans', 'all'],
+        default='not_following_back',
+        help='Which category to export for csv format (default: not_following_back)'
     )
 
     # History command
@@ -291,8 +324,10 @@ def main(argv: Optional[list] = None) -> int:
             return 1
 
         elif args.command == 'export':
-            print("Export functionality not yet implemented")
-            return 1
+            # Reuse manual mode runner; it picks up --format, --output, --category
+            args.interactive = False
+            args.save = False
+            return run_manual_mode(args)
 
         elif args.command == 'history':
             print("History functionality not yet implemented")

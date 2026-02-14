@@ -102,53 +102,89 @@ pip install -r requirements.txt
 ### Command reference
 
 ```bash
-python igfc.py                                         # Show help
-python igfc.py analyze --export PATH                   # Analyze export
-python igfc.py analyze --interactive                   # Prompt for path interactively
-python igfc.py api --username USER --experimental      # API mode (see warnings above)
-python igfc.py help --download-guide                   # Step-by-step export guide
-python igfc.py --help                                  # Full command documentation
+# General
+python igfc.py                                                   # Show help
+python igfc.py --help                                            # Full command documentation
+python igfc.py help --download-guide                             # Step-by-step export guide
+
+# Analyze — display results in the terminal
+python igfc.py analyze --export PATH                             # Coloured console output
+python igfc.py analyze --export PATH --no-color                  # No colours (boxes kept)
+python igfc.py analyze --export PATH --all                       # Print full not-following-back list
+python igfc.py analyze --interactive                             # Prompt for path interactively
+
+# Analyze — export results directly to a file
+python igfc.py analyze --export PATH --format csv --output results.csv
+python igfc.py analyze --export PATH --format csv --output results.csv --category all
+python igfc.py analyze --export PATH --format json --output results.json
+python igfc.py analyze --export PATH --format txt  --output results.txt
+
+# Export command — same as analyze but skips the console display
+python igfc.py export --export PATH --format csv  --output results.csv
+python igfc.py export --export PATH --format json --output results.json
+python igfc.py export --export PATH --format txt  --output results.txt
+
+# API mode (experimental)
+python igfc.py api --username USER --experimental                # See warnings above
 ```
+
+### CSV category filter
+
+When exporting to CSV you can choose which group to include via `--category`:
+
+| Value | Description |
+|-------|-------------|
+| `not_following_back` | Accounts you follow that don't follow back *(default)* |
+| `mutual_followers` | Accounts you both follow each other |
+| `fans` | Accounts that follow you but you don't follow back |
+| `all` | All three groups combined (adds a `category` column) |
 
 ### Interactive mode
 
-Running `python igfc.py analyze --interactive` will prompt you for the export path if you prefer not to type it on the command line.
+Running `python igfc.py analyze --interactive` prompts you for the export path instead of requiring it on the command line.
 
 ---
 
 ## Understanding the Output
 
+The default console output has three sections (rendered with colours in a modern terminal):
+
+**Overview** — follower/following counts, ratio, analysis date, and data source.
+
+**Breakdown** — the three relationship categories with counts and percentages. Percentages are colour-coded: green (≥ 80%), yellow (≥ 50%), red (< 50%).
+
+**Not Following Back** — numbered list of accounts, top 20 displayed. If there are more, a hint reminds you to export the full list to CSV.
+
 ```
-============================================================
-Analysis Results
-============================================================
+─────────────────────── Analysis Results ───────────────────────
 
-📊 Overview:
-   • Target Username:     @yourname
-   • Total Following:     905
-   • Total Followers:     7,827
-   • Analysis Date:       2025-12-15 14:30:22
-   • Data Source:         manual_export
+╭──────────────────────── Overview ─────────────────────────────╮
+│  Target account               @yourname                       │
+│  Analysis date                2025-12-15 14:30                │
+│  Data source                  Manual Export                   │
+│  Total followers              7,827                           │
+│  Total following              905                             │
+│  Follower / following ratio   8.65 : 1                        │
+╰───────────────────────────────────────────────────────────────╯
 
-📈 Breakdown:
-   • Not Following Back:  123 accounts (13.6%)
-   • Mutual Followers:    782 accounts (86.4%)
-   • Fans (follow you):   7,045 accounts
+╭──────────────────────── Breakdown ────────────────────────────╮
+│  Category                Count   % following   % followers    │
+│  ─────────────────────────────────────────────────────────    │
+│  Not following back        123         13.6%              —   │
+│  Mutual followers          782         86.4%              —   │
+│  Fans (follow you only)  7,045             —          90.0%   │
+╰───────────────────────────────────────────────────────────────╯
 
-📊 Ratios:
-   • Follower/Following:  8.65:1
-
-┌──────────────────────────────────────────────────────────┐
-│ Accounts Not Following Back:                              │
-├──────────────────────────────────────────────────────────┤
-│   1. @account_one                                        │
-│   2. @account_two                                        │
-│   ...                                                    │
-└──────────────────────────────────────────────────────────┘
+╭──────────── Not Following Back — 123 accounts ─────────────────╮
+│   1  @account_one                                              │
+│   2  @account_two                                              │
+│  ...                                                           │
+╰────────────────────────────────────────────────────────────────╯
+  ... and 103 more (use --format csv to export the full list)
 ```
 
-| Field | Description |
-|-------|-------------|
+| Category | Description |
+|----------|-------------|
 | Not Following Back | Accounts you follow that don't follow you back |
 | Mutual Followers | Accounts you both follow each other |
 | Fans | Accounts that follow you but you don't follow back |
@@ -175,7 +211,9 @@ ig-followers-checker/
 │   ├── storage/
 │   │   └── cache.py                 # Progress cache for API mode
 │   │
-│   ├── output/                      # Output formatting (in development)
+│   ├── output/
+│   │   ├── display.py               # Rich console display
+│   │   └── export.py                # CSV / JSON / TXT export
 │   │
 │   └── cli/
 │       ├── main.py                  # CLI entry point and argument parsing
