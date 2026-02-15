@@ -16,6 +16,7 @@ Two modes are available:
 - [Installation](#installation)
 - [Usage](#usage)
 - [Understanding the Output](#understanding-the-output)
+- [History & Comparison](#history--comparison)
 - [Project Structure](#project-structure)
 - [Limitations](#limitations)
 - [Contributing](#contributing)
@@ -111,6 +112,8 @@ python igfc.py help --download-guide                             # Step-by-step 
 python igfc.py analyze --export PATH                             # Coloured console output
 python igfc.py analyze --export PATH --no-color                  # No colours (boxes kept)
 python igfc.py analyze --export PATH --all                       # Print full not-following-back list
+python igfc.py analyze --export PATH --since 30                  # Only accounts followed in last 30 days
+python igfc.py analyze --export PATH --save                      # Save analysis to history
 python igfc.py analyze --interactive                             # Prompt for path interactively
 
 # Analyze — export results directly to a file
@@ -123,6 +126,15 @@ python igfc.py analyze --export PATH --format txt  --output results.txt
 python igfc.py export --export PATH --format csv  --output results.csv
 python igfc.py export --export PATH --format json --output results.json
 python igfc.py export --export PATH --format txt  --output results.txt
+
+# History
+python igfc.py history --list                                    # List all saved analyses
+python igfc.py history --view 2025-12-15                         # View a specific saved analysis
+python igfc.py history --clean                                   # Delete old analyses (keeps 10 most recent)
+
+# Compare two analyses
+python igfc.py compare --history                                 # Compare the two most recent saves
+python igfc.py compare --current new.json --previous old.json    # Compare specific files
 
 # API mode (experimental)
 python igfc.py api --username USER --experimental                # See warnings above
@@ -147,13 +159,15 @@ Running `python igfc.py analyze --interactive` prompts you for the export path i
 
 ## Understanding the Output
 
-The default console output has three sections (rendered with colours in a modern terminal):
+The default console output has four sections (rendered with colours in a modern terminal):
 
 **Overview** — follower/following counts, ratio, analysis date, and data source.
 
 **Breakdown** — the three relationship categories with counts and percentages. Percentages are colour-coded: green (≥ 80%), yellow (≥ 50%), red (< 50%).
 
-**Not Following Back** — numbered list of accounts, top 20 displayed. If there are more, a hint reminds you to export the full list to CSV.
+**Insights** — a set of human-readable observations derived from the numbers (e.g. ratios, fan count, reciprocity rate).
+
+**Not Following Back** — numbered list of accounts, top 20 by default. Use `--all` to print the full list, or `--format csv` to export it.
 
 ```
 ─────────────────────── Analysis Results ───────────────────────
@@ -175,12 +189,19 @@ The default console output has three sections (rendered with colours in a modern
 │  Fans (follow you only)  7,045             —          90.0%   │
 ╰───────────────────────────────────────────────────────────────╯
 
+╭──────────────────────── Insights ─────────────────────────────╮
+│  • 13.6% of accounts you follow don't follow you back (123)   │
+│  • 86.4% of accounts you follow are mutual followers          │
+│  • 7,045 accounts follow you that you don't follow back       │
+│  • Your follower / following ratio is 8.65 : 1 (excellent)   │
+╰───────────────────────────────────────────────────────────────╯
+
 ╭──────────── Not Following Back — 123 accounts ─────────────────╮
 │   1  @account_one                                              │
 │   2  @account_two                                              │
 │  ...                                                           │
 ╰────────────────────────────────────────────────────────────────╯
-  ... and 103 more (use --format csv to export the full list)
+  ... and 103 more (use --all to print all, or --format csv to export)
 ```
 
 | Category | Description |
@@ -188,6 +209,42 @@ The default console output has three sections (rendered with colours in a modern
 | Not Following Back | Accounts you follow that don't follow you back |
 | Mutual Followers | Accounts you both follow each other |
 | Fans | Accounts that follow you but you don't follow back |
+
+---
+
+## History & Comparison
+
+Save any analysis and compare snapshots over time to track follower changes.
+
+### Saving an analysis
+
+```bash
+python igfc.py analyze --export PATH --save
+```
+
+Saves the result to `data/history/analysis-YYYY-MM-DD-HHMMSS.json`.
+
+### Listing and viewing past analyses
+
+```bash
+python igfc.py history --list          # table of all saved runs
+python igfc.py history --view 2025-12-15   # re-display a past analysis
+python igfc.py history --clean         # delete all but the 10 most recent
+```
+
+### Comparing two analyses
+
+```bash
+python igfc.py compare --history                              # two most recent saves
+python igfc.py compare --current new.json --previous old.json # specific files
+```
+
+The comparison output shows a summary table and colour-coded lists for:
+- New followers gained
+- Followers lost
+- Accounts you newly followed
+- Accounts you unfollowed
+- Accounts that are newly not following you back
 
 ---
 
@@ -206,10 +263,14 @@ ig-followers-checker/
 │   │   └── instagram_api.py         # API-based data fetcher
 │   │
 │   ├── analysis/
-│   │   └── analyzer.py              # Core comparison logic (parser-agnostic)
+│   │   ├── analyzer.py              # Core comparison logic (parser-agnostic)
+│   │   ├── comparison.py            # Compare two Analysis snapshots
+│   │   ├── filters.py               # Filter users by timestamp, count, etc.
+│   │   └── statistics.py            # Human-readable insights engine
 │   │
 │   ├── storage/
-│   │   └── cache.py                 # Progress cache for API mode
+│   │   ├── cache.py                 # Progress cache for API mode
+│   │   └── history.py               # Save / load / list past analyses
 │   │
 │   ├── output/
 │   │   ├── display.py               # Rich console display
@@ -220,9 +281,11 @@ ig-followers-checker/
 │       ├── manual_mode.py           # Manual export workflow
 │       └── api_mode.py              # API mode workflow with warnings
 │
+├── data/
+│   └── history/                     # Saved analyses (gitignored)
+│
 └── tests/
-    ├── test_analysis_engine.py
-    └── test_manual_export_parser.py
+    └── fixtures/                    # Sample export data for tests
 ```
 
 ---
