@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import List
 
 from ..models import Analysis, User
+from ..analysis.statistics import InsightsEngine
 
 
 class AnalysisExporter:
@@ -141,6 +142,15 @@ class AnalysisExporter:
             f"Fans:                {s['fans_count']:,}  ({s['fan_percentage']:.1f}% of followers)",
             "",
         ]
+
+        # Insights
+        insights = InsightsEngine().generate(a)
+        if insights:
+            lines.append("INSIGHTS")
+            lines.append("-" * 30)
+            for insight in insights:
+                lines.append(f"• {insight}")
+            lines.append("")
 
         # Not following back list
         lines.append(f"NOT FOLLOWING BACK ({len(a.not_following_back):,})")

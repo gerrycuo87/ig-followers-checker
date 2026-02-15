@@ -5,11 +5,15 @@ This module handles argument parsing and routing to the appropriate mode
 (manual export or API mode).
 """
 import argparse
+from pathlib import Path
 import sys
 from typing import Optional
 
-from .manual_mode import run_manual_mode, show_interactive_menu
-from .api_mode import run_api_mode
+from .manual_mode import run_manual_mode
+from ..storage.history import HistoryManager
+from ..output.display import ConsoleDisplay
+from ..analysis.comparison import AnalysisComparator
+from ..models import Analysis
 
 
 def create_parser() -> argparse.ArgumentParser:
@@ -96,6 +100,13 @@ For more information, visit: https://github.com/yourusername/ig-followers-checke
         dest='show_all',
         action='store_true',
         help='Print the full not-following-back list in the terminal (default: top 20)'
+    )
+    analyze_parser.add_argument(
+        '--since',
+        dest='since_days',
+        type=int,
+        metavar='DAYS',
+        help='Only show not-following-back accounts followed in the last N days'
     )
 
     # API command (experimental mode - not recommended)
@@ -287,6 +298,96 @@ Note: This only works for YOUR OWN account (can't analyze others)
 """)
 
 
+def run_compare_command(args) -> int:
+    """Handle the ``compare`` subcommand."""
+    import json
+
+    history = HistoryManager()
+    comparator = AnalysisComparator()
+
+    if args.history:
+        # Compare the two most recent saved analyses
+        entries = history.list_analyses()
+        if len(entries) < 2:
+            print("Error: Need at least two saved analyses to compare.")
+            print("Run: python igfc.py analyze --export PATH --save")
+            return 1
+        later   = history.load_analysis(entries[0]["filename"])
+        earlier = history.load_analysis(entries[1]["filename"])
+
+    elif args.current and args.previous:
+        # Load from explicit file paths
+        def _load(path_str: str) -> Analysis:
+            p = Path(path_str).expanduser().resolve()
+            if not p.exists():
+                raise FileNotFoundError(f"File not found: {p}")
+            return Analysis.from_dict(json.loads(p.read_text(encoding="utf-8")))
+        try:
+            earlier = _load(args.previous)
+            later   = _load(args.current)
+        except (FileNotFoundError, KeyError) as e:
+            print(f"Error: {e}")
+            return 1
+
+    else:
+        print("Error: Provide --history or both --current and --previous.")
+        print("Example: python igfc.py compare --history")
+        return 1
+
+    # Ensure correct temporal order
+    if later.analysis_date < earlier.analysis_date:
+        earlier, later = later, earlier
+
+    result = comparator.compare(earlier, later)
+    display = ConsoleDisplay()
+    display.display_comparison(result)
+    return 0
+
+
+def run_history_command(args) -> int:
+    """Handle the ``history`` subcommand."""
+    history = HistoryManager()
+
+    if args.list:
+        entries = history.list_analyses()
+        if not entries:
+            print("No saved analyses found.")
+            print("Run: python igfc.py analyze --export PATH --save")
+            return 0
+        print(f"\n{'#':<4} {'Date':<22} {'Account':<20} {'Following':>10} {'Followers':>10} {'Not back':>10}")
+        print("-" * 80)
+        for i, e in enumerate(entries, 1):
+            date_str = e['date'][:16].replace('T', ' ')
+            print(
+                f"{i:<4} {date_str:<22} @{e['target_username']:<19} "
+                f"{e['following']:>10,} {e['followers']:>10,} {e['not_following_back']:>10,}"
+            )
+        print()
+        return 0
+
+    elif args.view:
+        try:
+            analysis = history.load_analysis(args.view)
+        except (FileNotFoundError, ValueError) as e:
+            print(f"Error: {e}")
+            return 1
+        display = ConsoleDisplay()
+        display.display_complete_analysis(analysis)
+        return 0
+
+    elif args.clean:
+        deleted = history.clean(keep=10)
+        if deleted:
+            print(f"✓ Deleted {deleted} old analysis file(s) (kept the 10 most recent).")
+        else:
+            print("Nothing to clean (10 or fewer analyses saved).")
+        return 0
+
+    else:
+        # No flag provided — default to --list behaviour
+        return run_history_command(type('A', (), {'list': True, 'view': None, 'clean': False})())
+
+
 def main(argv: Optional[list] = None) -> int:
     """
     Main entry point for the CLI.
@@ -317,11 +418,16 @@ def main(argv: Optional[list] = None) -> int:
             return run_manual_mode(args)
 
         elif args.command == 'api':
+            try:
+                from .api_mode import run_api_mode
+            except ImportError as e:
+                print(f"Error: API mode dependencies are not installed ({e})")
+                print("Install them with: pip install instagrapi")
+                return 1
             return run_api_mode(args)
 
         elif args.command == 'compare':
-            print("Compare functionality not yet implemented")
-            return 1
+            return run_compare_command(args)
 
         elif args.command == 'export':
             # Reuse manual mode runner; it picks up --format, --output, --category
@@ -330,8 +436,7 @@ def main(argv: Optional[list] = None) -> int:
             return run_manual_mode(args)
 
         elif args.command == 'history':
-            print("History functionality not yet implemented")
-            return 1
+            return run_history_command(args)
 
         elif args.command == 'help':
             if args.download_guide:

@@ -10,8 +10,10 @@ import argparse
 
 from ..parsers.manual_export import ManualExportParser
 from ..analysis.analyzer import FollowerAnalyzer
+from ..analysis.filters import AnalysisFilter
 from ..output.display import ConsoleDisplay
 from ..output.export import AnalysisExporter
+from ..storage.history import HistoryManager
 from ..models import Analysis
 
 
@@ -149,6 +151,20 @@ def run_manual_mode(args: argparse.Namespace) -> int:
         )
         print("✓ Analysis complete")
 
+        # Apply --since filter to not_following_back
+        since_days = getattr(args, 'since_days', None)
+        if since_days is not None:
+            import warnings
+            filt = AnalysisFilter()
+            with warnings.catch_warnings(record=True) as caught:
+                warnings.simplefilter("always")
+                filtered = filt.by_timestamp(analysis.not_following_back, days=since_days)
+            for w in caught:
+                print(f"  ⚠  {w.message}")
+            original_count = len(analysis.not_following_back)
+            analysis.not_following_back = filtered
+            print(f"  ↳ --since {since_days} days: showing {len(filtered):,} of {original_count:,} accounts")
+
         # Output
         fmt = getattr(args, 'format', 'console')
         output_path = getattr(args, 'output', None)
@@ -169,9 +185,11 @@ def run_manual_mode(args: argparse.Namespace) -> int:
             print(f"Error: Unknown format '{fmt}'")
             return 1
 
-        # Save to history placeholder (Phase 2)
+        # Save to history
         if getattr(args, 'save', False):
-            print("\n[History tracking coming in a future update]")
+            history = HistoryManager()
+            saved_path = history.save_analysis(analysis)
+            print(f"\n✓ Analysis saved to history: {saved_path.name}")
 
         return 0
 

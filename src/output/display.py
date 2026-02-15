@@ -16,6 +16,8 @@ from rich.columns import Columns
 from rich.rule import Rule
 
 from ..models import Analysis, User
+from ..analysis.statistics import InsightsEngine
+from ..analysis.comparison import ComparisonResult
 
 console = Console()
 
@@ -63,6 +65,7 @@ class ConsoleDisplay:
         self._print_header()
         self._print_overview(analysis)
         self._print_breakdown(analysis)
+        self._print_insights(analysis)
         limit = None if show_all else 20
         self._print_not_following_back(analysis.not_following_back, limit=limit)
         self._print_footer(analysis)
@@ -78,6 +81,10 @@ class ConsoleDisplay:
     def display_not_following_back(self, users: List[User], limit: Optional[int] = 20):
         """Display not-following-back list only."""
         self._print_not_following_back(users, limit=limit)
+
+    def display_comparison(self, result: ComparisonResult):
+        """Display a comparison between two analyses."""
+        self._print_comparison(result)
 
     # ------------------------------------------------------------------
     # Internal rendering
@@ -151,6 +158,14 @@ class ConsoleDisplay:
         self._console.print()
         self._console.print(Panel(table, title="[bold]Breakdown[/bold]", border_style="cyan", padding=(1, 1)))
 
+    def _print_insights(self, analysis: Analysis):
+        insights = InsightsEngine().generate(analysis)
+        if not insights:
+            return
+        text = "\n".join(f"  [bold cyan]•[/bold cyan] {line}" for line in insights)
+        self._console.print()
+        self._console.print(Panel(text, title="[bold]Insights[/bold]", border_style="cyan", padding=(1, 1)))
+
     def _print_not_following_back(self, users: List[User], limit: Optional[int] = 20):
         if not users:
             self._console.print()
@@ -182,6 +197,62 @@ class ConsoleDisplay:
                 f"  [dim]... and [bold]{_format_count(remaining)}[/bold] more "
                 f"(use [bold]--all[/bold] to print all, or [bold]--format csv[/bold] to export)[/dim]"
             )
+
+    def _print_comparison(self, result: ComparisonResult):
+        earlier_date = result.earlier.analysis_date.strftime("%Y-%m-%d")
+        later_date   = result.later.analysis_date.strftime("%Y-%m-%d")
+        days         = result.days_between
+
+        # Summary table
+        summary = Table(box=None, show_header=False, padding=(0, 2))
+        summary.add_column(style="dim")
+        summary.add_column(justify="right")
+
+        def _signed(n: int) -> Text:
+            if n > 0:
+                return Text(f"+{n:,}", style="bold green")
+            elif n < 0:
+                return Text(f"{n:,}", style="bold red")
+            return Text("0", style="dim")
+
+        summary.add_row("Earlier analysis", earlier_date)
+        summary.add_row("Later analysis",   later_date)
+        summary.add_row("Days between",     str(days))
+        summary.add_row("", "")
+        summary.add_row("New followers",        _signed(len(result.new_followers)))
+        summary.add_row("Lost followers",       _signed(-len(result.lost_followers)))
+        summary.add_row("Newly following",      _signed(len(result.new_following)))
+        summary.add_row("Unfollowed by you",    _signed(-len(result.unfollowed_by_you)))
+        summary.add_row("New non-reciprocal",   _signed(len(result.new_not_following_back)))
+
+        self._console.print()
+        self._console.print(Rule("[bold cyan]Comparison Results[/bold cyan]", style="cyan"))
+        self._console.print()
+        self._console.print(Panel(summary, title="[bold]Summary[/bold]", border_style="cyan", padding=(1, 2)))
+
+        # Detail sections
+        sections = [
+            ("Lost followers",     result.lost_followers,          "red"),
+            ("New non-reciprocal", result.new_not_following_back,  "red"),
+            ("New followers",      result.new_followers,           "green"),
+            ("Newly following",    result.new_following,           "green"),
+            ("Unfollowed by you",  result.unfollowed_by_you,       "yellow"),
+        ]
+        for title, users, colour in sections:
+            if not users:
+                continue
+            t = Table(box=box.SIMPLE_HEAD, show_header=True, padding=(0, 2))
+            t.add_column("#", justify="right", style="dim")
+            t.add_column("Username", style=f"bold {colour}")
+            for i, u in enumerate(users, 1):
+                t.add_row(str(i), f"@{u.username}")
+            self._console.print()
+            self._console.print(Panel(
+                t,
+                title=f"[bold {colour}]{title}[/bold {colour}] — {len(users):,}",
+                border_style=colour,
+                padding=(1, 1),
+            ))
 
     def _print_footer(self, analysis: Analysis):
         self._console.print()
