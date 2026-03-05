@@ -3,9 +3,12 @@ Statistics and insights engine for Instagram Followers Checker.
 
 Generates human-readable insight strings from a completed Analysis object.
 """
+import logging
 from typing import List
 
 from ..models import Analysis
+
+logger = logging.getLogger(__name__)
 
 
 class InsightsEngine:

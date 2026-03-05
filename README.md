@@ -108,6 +108,10 @@ python igfc.py                                                   # Show help
 python igfc.py --help                                            # Full command documentation
 python igfc.py help --download-guide                             # Step-by-step export guide
 
+# Logging / Debugging (global flags, use before any command)
+python igfc.py --verbose analyze --export PATH                   # Enable INFO level logging
+python igfc.py --debug analyze --export PATH                     # Enable DEBUG level logging
+
 # Analyze — display results in the terminal
 python igfc.py analyze --export PATH                             # Coloured console output
 python igfc.py analyze --export PATH --no-color                  # No colours (boxes kept)
@@ -154,6 +158,22 @@ When exporting to CSV you can choose which group to include via `--category`:
 ### Interactive mode
 
 Running `python igfc.py analyze --interactive` prompts you for the export path instead of requiring it on the command line.
+
+### Logging
+
+The tool writes logs to `data/igfc.log` with configurable verbosity:
+
+- **Default (WARNING)** — Only errors and warnings are logged
+- **`--verbose` (INFO)** — Includes informational messages (login attempts, parsing progress, etc.)
+- **`--debug` (DEBUG)** — Full diagnostic output for troubleshooting
+
+Examples:
+```bash
+python igfc.py --verbose analyze --export PATH   # INFO level logging
+python igfc.py --debug api --username USER --experimental  # DEBUG level logging
+```
+
+The `--verbose` and `--debug` flags are global and must come **before** the subcommand.
 
 ---
 

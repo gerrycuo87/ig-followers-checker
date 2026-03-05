@@ -6,11 +6,14 @@ extended metadata (follower count, verified status, private flag) will
 emit a clear warning and return an empty list when applied to manual
 export data that lacks that information.
 """
+import logging
 import warnings
 from datetime import datetime, timezone
 from typing import List, Optional
 
 from ..models import User
+
+logger = logging.getLogger(__name__)
 
 
 class AnalysisFilter:

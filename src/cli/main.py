@@ -5,6 +5,7 @@ This module handles argument parsing and routing to the appropriate mode
 (manual export or API mode).
 """
 import argparse
+import logging
 from pathlib import Path
 import sys
 from typing import Optional
@@ -42,6 +43,18 @@ Examples:
 
 For more information, visit: https://github.com/yourusername/ig-followers-checker
         """
+    )
+
+    # Global flags
+    parser.add_argument(
+        '--verbose', '-v',
+        action='store_true',
+        help='Enable verbose logging (INFO level)'
+    )
+    parser.add_argument(
+        '--debug',
+        action='store_true',
+        help='Enable debug logging (DEBUG level)'
     )
 
     # Create subparsers for different commands
@@ -344,6 +357,44 @@ def run_compare_command(args) -> int:
     return 0
 
 
+def _configure_logging(args):
+    """
+    Configure root logger based on command-line flags.
+
+    Args:
+        args: Parsed arguments with verbose/debug flags
+    """
+    from pathlib import Path
+
+    # Determine log level
+    if getattr(args, 'debug', False):
+        level = logging.DEBUG
+    elif getattr(args, 'verbose', False):
+        level = logging.INFO
+    else:
+        level = logging.WARNING
+
+    # Ensure data directory exists
+    data_dir = Path(__file__).resolve().parents[2] / "data"
+    data_dir.mkdir(parents=True, exist_ok=True)
+    log_file = data_dir / "igfc.log"
+
+    # Configure root logger
+    logging.basicConfig(
+        level=level,
+        format="%(asctime)s  %(name)-30s  %(levelname)-8s  %(message)s",
+        handlers=[
+            logging.FileHandler(log_file, encoding='utf-8'),
+            logging.StreamHandler(),
+        ],
+        force=True,  # Override any existing configuration
+    )
+
+    # Suppress overly verbose third-party loggers
+    logging.getLogger('urllib3').setLevel(logging.WARNING)
+    logging.getLogger('instagrapi').setLevel(logging.WARNING)
+
+
 def run_history_command(args) -> int:
     """Handle the ``history`` subcommand."""
     history = HistoryManager()
@@ -411,6 +462,9 @@ def main(argv: Optional[list] = None) -> int:
         return 0
 
     args = parser.parse_args(argv)
+
+    # Configure logging based on flags
+    _configure_logging(args)
 
     # Handle commands
     try:

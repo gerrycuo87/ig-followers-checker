@@ -1,6 +1,7 @@
 """
 Instagram API client wrapper with authentication and error handling.
 """
+import logging
 import os
 from typing import List, Tuple
 
@@ -20,6 +21,8 @@ from ..config import (
     FOLLOWING_BATCH_SIZE,
     FOLLOWERS_BATCH_SIZE,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class InstagramClient:
@@ -58,32 +61,32 @@ class InstagramClient:
 
         # Try to load existing session
         if os.path.exists(SESSION_FILE):
-            print("Found existing session file, attempting to reuse...")
+            logger.info("Found existing session file, attempting to reuse...")
             try:
                 self.client.load_settings(SESSION_FILE)
                 self.client.login(username, password)
 
                 # Verify session is still valid
                 self.client.get_timeline_feed()
-                print("Successfully logged in using saved session!")
+                logger.info("Successfully logged in using saved session!")
                 self.logged_in = True
                 return True
             except Exception as e:
-                print(f"Saved session invalid, performing fresh login. Error: {e}")
+                logger.warning(f"Saved session invalid, performing fresh login. Error: {e}")
                 os.remove(SESSION_FILE)
 
         # Fresh login
         try:
-            print("Logging in to Instagram...")
+            logger.info("Logging in to Instagram...")
             self.client.login(username, password)
 
             # Verify session is actually working
-            print("Verifying session...")
+            logger.info("Verifying session...")
             self.client.get_timeline_feed()
 
             # Save session for future use
             self.client.dump_settings(SESSION_FILE)
-            print("Successfully logged in and saved session!")
+            logger.info("Successfully logged in and saved session!")
             self.logged_in = True
             return True
 
@@ -92,7 +95,7 @@ class InstagramClient:
             raise
 
         except Exception as e:
-            print(f"Unexpected error during login: {e}")
+            logger.error(f"Unexpected error during login: {e}")
             raise
 
     def _handle_login_error(self, e: Exception):
@@ -105,45 +108,43 @@ class InstagramClient:
         error_message = str(e)
 
         if isinstance(e, PleaseWaitFewMinutes):
-            print("\n" + "!" * 60)
-            print("RATE LIMITED - Too many requests")
-            print("!" * 60)
-            print("\nInstagram has temporarily blocked your account from making requests.")
-            print("\nWHAT THIS MEANS:")
-            print("- You've made too many login attempts or API requests")
-            print("- Despite the error saying 'few minutes', you likely need to wait 6-24 hours")
-            print("\nWHAT TO DO:")
-            print("1. Stop running the script immediately")
-            print("2. Wait at least 6-24 hours before trying again")
-            print("3. Use a dedicated test account (not your main account)")
-            print("4. Run the script max 1-2 times per day when it works")
-            print("!" * 60)
+            logger.error("=" * 60)
+            logger.error("RATE LIMITED - Too many requests")
+            logger.error("Instagram has temporarily blocked your account from making requests.")
+            logger.error("WHAT THIS MEANS:")
+            logger.error("- You've made too many login attempts or API requests")
+            logger.error("- Despite the error saying 'few minutes', you likely need to wait 6-24 hours")
+            logger.error("WHAT TO DO:")
+            logger.error("1. Stop running the script immediately")
+            logger.error("2. Wait at least 6-24 hours before trying again")
+            logger.error("3. Use a dedicated test account (not your main account)")
+            logger.error("4. Run the script max 1-2 times per day when it works")
+            logger.error("=" * 60)
         elif "challenge_required" in error_message or isinstance(e, ChallengeRequired):
-            print("\n" + "!" * 60)
-            print("INSTAGRAM SECURITY CHALLENGE REQUIRED")
-            print("!" * 60)
-            print("\nYour account has been flagged for verification.")
-            print("\nWHAT TO DO NOW:")
-            print("1. Open the Instagram app on your phone")
-            print("2. Complete the security verification challenge")
-            print("3. Wait 6-24 hours before running this script again")
-            print("4. Consider using a dedicated test account instead")
-            print("\nWHY THIS HAPPENED:")
-            print("- Instagram detected automated activity")
-            print("- Too many requests in short time")
-            print("- Using automation tools triggers their anti-bot system")
-            print("\nBEST PRACTICE:")
-            print("- Use a throwaway/test account for automation")
-            print("- Wait longer between script runs (24+ hours)")
-            print("- Run the script less frequently")
-            print("!" * 60)
+            logger.error("=" * 60)
+            logger.error("INSTAGRAM SECURITY CHALLENGE REQUIRED")
+            logger.error("Your account has been flagged for verification.")
+            logger.error("WHAT TO DO NOW:")
+            logger.error("1. Open the Instagram app on your phone")
+            logger.error("2. Complete the security verification challenge")
+            logger.error("3. Wait 6-24 hours before running this script again")
+            logger.error("4. Consider using a dedicated test account instead")
+            logger.error("WHY THIS HAPPENED:")
+            logger.error("- Instagram detected automated activity")
+            logger.error("- Too many requests in short time")
+            logger.error("- Using automation tools triggers their anti-bot system")
+            logger.error("BEST PRACTICE:")
+            logger.error("- Use a throwaway/test account for automation")
+            logger.error("- Wait longer between script runs (24+ hours)")
+            logger.error("- Run the script less frequently")
+            logger.error("=" * 60)
         else:
-            print(f"\nLogin failed: {error_message}")
-            print("\nPossible solutions:")
-            print("1. Wait 2-6 hours (Instagram may have rate-limited you)")
-            print("2. Verify your credentials are correct")
-            print("3. Try logging in via the Instagram app first")
-            print("4. Check if your account requires 2FA verification")
+            logger.error(f"Login failed: {error_message}")
+            logger.error("Possible solutions:")
+            logger.error("1. Wait 2-6 hours (Instagram may have rate-limited you)")
+            logger.error("2. Verify your credentials are correct")
+            logger.error("3. Try logging in via the Instagram app first")
+            logger.error("4. Check if your account requires 2FA verification")
 
     def get_user_info(self, username: str):
         """
@@ -228,34 +229,31 @@ class InstagramClient:
             operation: Description of the operation that failed
         """
         if isinstance(e, PleaseWaitFewMinutes):
-            print("\n" + "!" * 60)
-            print("RATE LIMITED - Too many requests")
-            print("!" * 60)
-            print(f"\nFailed to {operation} - Instagram blocked your request.")
-            print("\nInstagram says 'wait a few minutes' but you likely need to wait 6-24 hours.")
-            print("\nThis happened because:")
-            print("- You've been running the script too frequently")
-            print("- Instagram detected automated activity")
-            print("\nNext steps:")
-            print("1. STOP running the script now")
-            print("2. Wait 6-24 hours minimum")
-            print("3. When you retry, only run the script 1-2 times per day maximum")
-            print("4. Consider using a dedicated test account")
-            print("!" * 60)
+            logger.error("=" * 60)
+            logger.error("RATE LIMITED - Too many requests")
+            logger.error(f"Failed to {operation} - Instagram blocked your request.")
+            logger.error("Instagram says 'wait a few minutes' but you likely need to wait 6-24 hours.")
+            logger.error("This happened because:")
+            logger.error("- You've been running the script too frequently")
+            logger.error("- Instagram detected automated activity")
+            logger.error("Next steps:")
+            logger.error("1. STOP running the script now")
+            logger.error("2. Wait 6-24 hours minimum")
+            logger.error("3. When you retry, only run the script 1-2 times per day maximum")
+            logger.error("4. Consider using a dedicated test account")
+            logger.error("=" * 60)
         elif "challenge_required" in str(e) or isinstance(e, ChallengeRequired):
-            print("\n" + "!" * 60)
-            print("CHALLENGE REQUIRED - Account verification needed")
-            print("!" * 60)
-            print("Your account has been flagged. Wait 6-24 hours.")
-            print("!" * 60)
+            logger.error("=" * 60)
+            logger.error("CHALLENGE REQUIRED - Account verification needed")
+            logger.error("Your account has been flagged. Wait 6-24 hours.")
+            logger.error("=" * 60)
         elif isinstance(e, LoginRequired):
-            print("\n" + "!" * 60)
-            print("LOGIN REQUIRED - Session expired or not authenticated")
-            print("!" * 60)
-            print(f"Failed to {operation} - session may have expired.")
-            print("Delete session.json and try again after 6-24 hours.")
-            print("!" * 60)
+            logger.error("=" * 60)
+            logger.error("LOGIN REQUIRED - Session expired or not authenticated")
+            logger.error(f"Failed to {operation} - session may have expired.")
+            logger.error("Delete session.json and try again after 6-24 hours.")
+            logger.error("=" * 60)
         else:
-            print(f"Failed to {operation}: {e}")
-            print("This usually means Instagram has rate-limited your account.")
-            print("Wait 6-24 hours before trying again.")
+            logger.error(f"Failed to {operation}: {e}")
+            logger.error("This usually means Instagram has rate-limited your account.")
+            logger.error("Wait 6-24 hours before trying again.")

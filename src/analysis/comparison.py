@@ -3,10 +3,13 @@ Analysis comparison for Instagram Followers Checker.
 
 Compares two Analysis snapshots and surfaces what changed between them.
 """
+import logging
 from dataclasses import dataclass, field
 from typing import List
 
 from ..models import Analysis, User
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass

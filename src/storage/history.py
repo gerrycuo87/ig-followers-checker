@@ -5,11 +5,14 @@ Saves each analysis to disk and supports listing, loading, and cleaning
 past analyses for comparison over time.
 """
 import json
+import logging
 from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Optional, Any
 
 from ..models import Analysis
+
+logger = logging.getLogger(__name__)
 
 # Default storage directory (relative to project root)
 _HISTORY_DIR = Path(__file__).resolve().parents[2] / "data" / "history"

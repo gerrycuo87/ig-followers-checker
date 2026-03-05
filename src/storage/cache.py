@@ -2,11 +2,14 @@
 Cache management for Instagram follower analysis progress.
 """
 import json
+import logging
 from pathlib import Path
 from datetime import datetime
 from typing import Dict, Optional
 
 from ..config import CACHE_DIR
+
+logger = logging.getLogger(__name__)
 
 
 class CacheManager:
@@ -50,7 +53,7 @@ class CacheManager:
                 with open(cache_path, "r", encoding="utf-8") as f:
                     return json.load(f)
             except Exception as e:
-                print(f"Warning: Could not load cache file: {e}")
+                logger.warning(f"Could not load cache file: {e}")
                 return None
         return None
 
@@ -69,9 +72,9 @@ class CacheManager:
 
             with open(cache_path, "w", encoding="utf-8") as f:
                 json.dump(progress_data, f, indent=2, ensure_ascii=False)
-            print(f"      ✓ Progress saved to {cache_path}")
+            logger.info(f"Progress saved to {cache_path}")
         except Exception as e:
-            print(f"Warning: Could not save progress: {e}")
+            logger.warning(f"Could not save progress: {e}")
 
     @staticmethod
     def user_to_dict(user) -> Dict:
