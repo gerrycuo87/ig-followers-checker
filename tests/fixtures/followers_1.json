@@ -1,0 +1,37 @@
+{
+  "relationships_followers": [
+    {
+      "title": "",
+      "media_list_data": [],
+      "string_list_data": [
+        {
+          "href": "https://www.instagram.com/follower1",
+          "value": "follower1",
+          "timestamp": 1702857600
+        }
+      ]
+    },
+    {
+      "title": "",
+      "media_list_data": [],
+      "string_list_data": [
+        {
+          "href": "https://www.instagram.com/follower2",
+          "value": "follower2",
+          "timestamp": 1702857601
+        }
+      ]
+    },
+    {
+      "title": "",
+      "media_list_data": [],
+      "string_list_data": [
+        {
+          "href": "https://www.instagram.com/follower3",
+          "value": "follower3",
+          "timestamp": 1702857602
+        }
+      ]
+    }
+  ]
+}

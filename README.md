@@ -98,6 +98,20 @@ pip install -r requirements.txt
 
 ---
 
+## Testing
+
+```bash
+# Install pytest (once)
+pip install pytest
+
+# Run the full test suite
+pytest tests/
+```
+
+78 tests covering parsers, analysis engine, filters, history, and comparison logic.
+
+---
+
 ## Usage
 
 ### Command reference
@@ -305,7 +319,12 @@ ig-followers-checker/
 │   └── history/                     # Saved analyses (gitignored)
 │
 └── tests/
-    └── fixtures/                    # Sample export data for tests
+    ├── test_parsers.py              # ManualExportParser tests
+    ├── test_analysis.py             # FollowerAnalyzer tests
+    ├── test_filters.py              # AnalysisFilter tests
+    ├── test_history.py              # HistoryManager tests
+    ├── test_comparison.py           # AnalysisComparator tests
+    └── fixtures/                    # Sample export data
 ```
 
 ---
