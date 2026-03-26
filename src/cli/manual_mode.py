@@ -155,13 +155,21 @@ def run_manual_mode(args: argparse.Namespace) -> int:
         since_days = getattr(args, 'since_days', None)
         if since_days is not None:
             import warnings
+            # Warn if all accounts are missing timestamps (common with manual exports)
+            accounts = analysis.not_following_back
+            if accounts and all(u.timestamp is None for u in accounts):
+                print(
+                    "  ⚠  --since has no effect: none of the accounts have a timestamp.\n"
+                    "     Manual Instagram exports often omit timestamps from the following list.\n"
+                    "     Try re-downloading your export or use a newer export version."
+                )
             filt = AnalysisFilter()
             with warnings.catch_warnings(record=True) as caught:
                 warnings.simplefilter("always")
-                filtered = filt.by_timestamp(analysis.not_following_back, days=since_days)
+                filtered = filt.by_timestamp(accounts, days=since_days)
             for w in caught:
                 print(f"  ⚠  {w.message}")
-            original_count = len(analysis.not_following_back)
+            original_count = len(accounts)
             analysis.not_following_back = filtered
             print(f"  ↳ --since {since_days} days: showing {len(filtered):,} of {original_count:,} accounts")
 

@@ -76,14 +76,26 @@ class ManualExportParser:
         self.logger.info(f"Searching for export files in: {export_path}")
         export_files = self._find_export_files(export_path)
 
+        if not export_files.get('followers') and not export_files.get('following'):
+            raise FileNotFoundError(
+                f"Could not find followers or following files in: {export_path}\n"
+                f"Expected files: {self.FOLLOWERS_FILENAMES} and {self.FOLLOWING_FILENAMES}\n"
+                "Check that you extracted the ZIP and pointed to the correct folder.\n"
+                "Run: python igfc.py help --download-guide"
+            )
+
         if not export_files.get('followers'):
             raise FileNotFoundError(
-                f"Followers file not found in export. Searched for: {self.FOLLOWERS_FILENAMES}"
+                f"Followers file not found in: {export_path}\n"
+                f"Expected one of: {self.FOLLOWERS_FILENAMES}\n"
+                "Your export may be incomplete — try re-downloading from Instagram."
             )
 
         if not export_files.get('following'):
             raise FileNotFoundError(
-                f"Following file not found in export. Searched for: {self.FOLLOWING_FILENAMES}"
+                f"Following file not found in: {export_path}\n"
+                f"Expected one of: {self.FOLLOWING_FILENAMES}\n"
+                "Your export may be incomplete — try re-downloading from Instagram."
             )
 
         # Parse the files
@@ -196,9 +208,14 @@ class ManualExportParser:
             with open(json_path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
         except json.JSONDecodeError as e:
-            raise ValueError(f"Invalid JSON in {json_path}: {e}")
-        except Exception as e:
-            raise ValueError(f"Error reading {json_path}: {e}")
+            raise ValueError(
+                f"{json_path.name} is not valid JSON (line {e.lineno}, col {e.colno}).\n"
+                "The file may be corrupted — try re-downloading your Instagram export."
+            ) from e
+        except OSError as e:
+            raise OSError(
+                f"Could not read {json_path}: {e}"
+            ) from e
 
         followers = []
 
@@ -210,8 +227,9 @@ class ManualExportParser:
             follower_entries = data
         else:
             raise ValueError(
-                f"Unexpected JSON structure in {json_path}. "
-                f"Expected dict with 'relationships_followers' or list."
+                f"Unexpected JSON structure in {json_path.name}.\n"
+                "Expected a list or a dict with 'relationships_followers'.\n"
+                "Instagram may have changed their export format — please open an issue."
             )
 
         # Parse each follower entry
@@ -268,9 +286,14 @@ class ManualExportParser:
             with open(json_path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
         except json.JSONDecodeError as e:
-            raise ValueError(f"Invalid JSON in {json_path}: {e}")
-        except Exception as e:
-            raise ValueError(f"Error reading {json_path}: {e}")
+            raise ValueError(
+                f"{json_path.name} is not valid JSON (line {e.lineno}, col {e.colno}).\n"
+                "The file may be corrupted — try re-downloading your Instagram export."
+            ) from e
+        except OSError as e:
+            raise OSError(
+                f"Could not read {json_path}: {e}"
+            ) from e
 
         following = []
 
@@ -282,8 +305,9 @@ class ManualExportParser:
             following_entries = data
         else:
             raise ValueError(
-                f"Unexpected JSON structure in {json_path}. "
-                f"Expected dict with 'relationships_following' or list."
+                f"Unexpected JSON structure in {json_path.name}.\n"
+                "Expected a list or a dict with 'relationships_following'.\n"
+                "Instagram may have changed their export format — please open an issue."
             )
 
         # Parse each following entry

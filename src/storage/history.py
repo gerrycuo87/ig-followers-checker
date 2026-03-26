@@ -23,7 +23,13 @@ class HistoryManager:
 
     def __init__(self, history_dir: Optional[Path] = None):
         self._dir = history_dir or _HISTORY_DIR
-        self._dir.mkdir(parents=True, exist_ok=True)
+        try:
+            self._dir.mkdir(parents=True, exist_ok=True)
+        except PermissionError as e:
+            raise PermissionError(
+                f"Cannot create history directory {self._dir}: permission denied.\n"
+                "Check that you have write access to the data/ folder."
+            ) from e
 
     # ------------------------------------------------------------------
     # Public API
@@ -44,7 +50,19 @@ class HistoryManager:
         """
         filename = "analysis-" + analysis.analysis_date.strftime("%Y-%m-%d-%H%M%S") + ".json"
         path = self._dir / filename
-        path.write_text(json.dumps(analysis.to_dict(), ensure_ascii=False, indent=2), encoding="utf-8")
+        try:
+            path.write_text(json.dumps(analysis.to_dict(), ensure_ascii=False, indent=2), encoding="utf-8")
+        except PermissionError as e:
+            raise PermissionError(
+                f"Cannot write to {path}: permission denied.\n"
+                "Check that you have write access to the data/history/ folder."
+            ) from e
+        except OSError as e:
+            raise OSError(
+                f"Failed to save analysis to {path}: {e}\n"
+                "Check available disk space and write permissions."
+            ) from e
+        logger.info(f"Analysis saved to {path}")
         return path
 
     def list_analyses(self) -> List[Dict[str, Any]]:
@@ -105,7 +123,16 @@ class HistoryManager:
                 f"Multiple analyses match '{identifier}': {names}. "
                 "Use a more specific identifier."
             )
-        data = json.loads(candidates[0].read_text(encoding="utf-8"))
+        path = candidates[0]
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as e:
+            raise ValueError(
+                f"History file {path.name} is corrupted (invalid JSON).\n"
+                "You can remove it with: python igfc.py history --clean"
+            ) from e
+        except OSError as e:
+            raise OSError(f"Could not read history file {path}: {e}") from e
         return Analysis.from_dict(data)
 
     def latest(self) -> Optional[Analysis]:
@@ -133,9 +160,14 @@ class HistoryManager:
         """
         paths = sorted(self._dir.glob("analysis-*.json"), reverse=True)
         to_delete = paths[keep:]
+        deleted = 0
         for p in to_delete:
-            p.unlink()
-        return len(to_delete)
+            try:
+                p.unlink()
+                deleted += 1
+            except PermissionError:
+                logger.warning(f"Could not delete {p.name}: permission denied — skipping.")
+        return deleted
 
     # ------------------------------------------------------------------
     # Internal helpers
