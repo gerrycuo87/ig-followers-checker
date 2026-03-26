@@ -31,7 +31,8 @@ Two modes are available:
 pip install -r requirements.txt
 
 # Analyze your Instagram export (recommended)
-python igfc.py analyze --export ~/Downloads/instagram-export
+# Tip: place your extracted export inside data/exports/ — it's gitignored so your data stays private
+python igfc.py analyze --export data/exports/instagram-export
 
 # Show all available commands
 python igfc.py --help
