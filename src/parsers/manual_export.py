@@ -5,6 +5,7 @@ Parses Instagram's official JSON data export files to extract follower and follo
 Handles multiple export format versions and directory structures.
 """
 import json
+import zipfile
 from pathlib import Path
 from typing import List, Dict, Tuple, Optional
 import logging
@@ -52,25 +53,36 @@ class ManualExportParser:
 
     def parse_export_directory(self, export_path: Path) -> Tuple[List[User], List[User]]:
         """
-        Parse Instagram export directory to extract followers and following lists.
+        Parse Instagram export — accepts either an extracted folder or a .zip archive.
+
+        If a ZIP file is provided it is extracted next to the archive (same parent
+        directory, folder named after the ZIP stem) before parsing proceeds.
+        Re-running with the same ZIP skips re-extraction when the folder already exists.
 
         Args:
-            export_path: Path to extracted Instagram export folder
+            export_path: Path to extracted Instagram export folder OR a .zip archive
 
         Returns:
             Tuple of (followers_list, following_list)
 
         Raises:
-            FileNotFoundError: If export directory or required files not found
-            ValueError: If JSON files are corrupted or invalid format
+            FileNotFoundError: If export path or required files not found
+            ValueError: If ZIP is invalid, JSON files are corrupted, or format unknown
         """
         export_path = Path(export_path)
 
         if not export_path.exists():
-            raise FileNotFoundError(f"Export directory not found: {export_path}")
+            raise FileNotFoundError(f"Export path not found: {export_path}")
+
+        # Auto-extract ZIP archives
+        if export_path.suffix.lower() == '.zip':
+            export_path = self._extract_zip(export_path)
 
         if not export_path.is_dir():
-            raise ValueError(f"Export path is not a directory: {export_path}")
+            raise ValueError(
+                f"Export path is not a directory or ZIP archive: {export_path}\n"
+                "Provide either the extracted export folder or the original .zip file."
+            )
 
         # Find the JSON files
         self.logger.info(f"Searching for export files in: {export_path}")
@@ -80,7 +92,6 @@ class ManualExportParser:
             raise FileNotFoundError(
                 f"Could not find followers or following files in: {export_path}\n"
                 f"Expected files: {self.FOLLOWERS_FILENAMES} and {self.FOLLOWING_FILENAMES}\n"
-                "Check that you extracted the ZIP and pointed to the correct folder.\n"
                 "Run: python igfc.py help --download-guide"
             )
 
@@ -110,6 +121,42 @@ class ManualExportParser:
         )
 
         return followers, following
+
+    def _extract_zip(self, zip_path: Path) -> Path:
+        """
+        Extract a ZIP archive next to the archive file and return the extraction directory.
+
+        The target directory is named after the ZIP stem (e.g. ``export.zip`` →
+        ``export/``).  If the directory already exists extraction is skipped so
+        repeated runs are fast.
+
+        Args:
+            zip_path: Path to the .zip archive
+
+        Returns:
+            Path to the extracted directory
+
+        Raises:
+            ValueError: If the file is not a valid ZIP archive
+        """
+        extract_dir = zip_path.parent / zip_path.stem
+
+        if extract_dir.exists():
+            self.logger.info(f"Extraction directory already exists, skipping: {extract_dir}")
+            return extract_dir
+
+        if not zipfile.is_zipfile(zip_path):
+            raise ValueError(
+                f"{zip_path.name} is not a valid ZIP archive.\n"
+                "Make sure you downloaded the complete file from Instagram."
+            )
+
+        self.logger.info(f"Extracting {zip_path.name} to {extract_dir} ...")
+        with zipfile.ZipFile(zip_path, 'r') as zf:
+            zf.extractall(extract_dir)
+        self.logger.info(f"Extraction complete: {extract_dir}")
+
+        return extract_dir
 
     def _find_export_files(self, export_path: Path) -> Dict[str, Optional[Path]]:
         """

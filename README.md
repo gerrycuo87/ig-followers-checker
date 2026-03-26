@@ -30,9 +30,9 @@ Two modes are available:
 # Install dependencies
 pip install -r requirements.txt
 
-# Analyze your Instagram export (recommended)
-# Tip: place your extracted export inside data/exports/ — it's gitignored so your data stays private
-python igfc.py analyze --export data/exports/instagram-export
+# Analyze your Instagram export — pass the ZIP or the extracted folder (both work)
+# data/exports/ is gitignored so your data stays private
+python igfc.py analyze --export data/exports/instagram-export.zip
 
 # Show all available commands
 python igfc.py --help
@@ -56,12 +56,18 @@ This is the primary and recommended way to use the tool.
 1. Open Instagram → **Settings** → **Security** → **Download Data**
 2. Select **JSON** format and request the download
 3. Wait for Instagram's email (~48 hours)
-4. Download and extract the ZIP file
-5. Run the tool:
+4. Download the ZIP file
+5. Run the tool — pass either the ZIP directly or the extracted folder:
 
 ```bash
-python igfc.py analyze --export /path/to/extracted-folder
+# Point at the ZIP (auto-extracted on first run)
+python igfc.py analyze --export data/exports/instagram-export.zip
+
+# Or point at the already-extracted folder
+python igfc.py analyze --export data/exports/instagram-export
 ```
+
+> **Tip:** `data/exports/` is gitignored — it is safe to put both the ZIP and the extracted folder there.
 
 ---
 
@@ -109,7 +115,7 @@ pip install pytest
 pytest tests/
 ```
 
-78 tests covering parsers, analysis engine, filters, history, and comparison logic.
+84 tests covering parsers (including ZIP extraction), analysis engine, filters, history, and comparison logic.
 
 ---
 
@@ -317,6 +323,7 @@ ig-followers-checker/
 │       └── api_mode.py              # API mode workflow with warnings
 │
 ├── data/
+│   ├── exports/                     # Drop your ZIP or extracted export here (gitignored)
 │   └── history/                     # Saved analyses (gitignored)
 │
 └── tests/

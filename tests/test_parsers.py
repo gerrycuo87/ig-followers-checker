@@ -2,10 +2,11 @@
 Unit tests for ManualExportParser.
 
 Covers both new and old Instagram export formats, missing-file and
-corrupted-JSON error paths, and the various filename/subdirectory
-layouts Instagram has used over time.
+corrupted-JSON error paths, the various filename/subdirectory layouts
+Instagram has used over time, and ZIP archive auto-extraction.
 """
 import json
+import zipfile
 import pytest
 from pathlib import Path
 
@@ -176,3 +177,61 @@ class TestSubdirectorySearch:
         followers, following = parser.parse_export_directory(tmp_path)
         assert followers[0].username == "sub1"
         assert following[0].username == "sub2"
+
+
+# ---------------------------------------------------------------------------
+# ZIP archive support
+# ---------------------------------------------------------------------------
+
+def _make_zip(zip_path: Path, followers_data, following_data) -> Path:
+    """Create a ZIP archive containing followers and following JSON files."""
+    with zipfile.ZipFile(zip_path, 'w') as zf:
+        zf.writestr("followers_1.json", json.dumps(followers_data))
+        zf.writestr("following.json", json.dumps(following_data))
+    return zip_path
+
+
+_ZIP_FOLLOWERS = {"relationships_followers": [
+    {"title": "zipuser1", "string_list_data": [{"href": "https://www.instagram.com/zipuser1", "timestamp": 1}]}
+]}
+_ZIP_FOLLOWING = {"relationships_following": [
+    {"title": "zipfollow1", "string_list_data": [{"href": "https://www.instagram.com/zipfollow1", "timestamp": 2}]}
+]}
+
+
+class TestZipSupport:
+    def test_zip_is_accepted_and_parsed(self, tmp_path):
+        """Parser accepts a .zip archive directly."""
+        zip_path = _make_zip(tmp_path / "export.zip", _ZIP_FOLLOWERS, _ZIP_FOLLOWING)
+        parser = ManualExportParser()
+        followers, following = parser.parse_export_directory(zip_path)
+        assert {u.username for u in followers} == {"zipuser1"}
+        assert {u.username for u in following} == {"zipfollow1"}
+
+    def test_zip_extracts_to_sibling_directory(self, tmp_path):
+        """ZIP is extracted to a directory named after the ZIP stem."""
+        zip_path = _make_zip(tmp_path / "myexport.zip", _ZIP_FOLLOWERS, _ZIP_FOLLOWING)
+        ManualExportParser().parse_export_directory(zip_path)
+        assert (tmp_path / "myexport").is_dir()
+
+    def test_zip_rerun_skips_extraction(self, tmp_path):
+        """Re-running with the same ZIP skips extraction when the directory already exists."""
+        zip_path = _make_zip(tmp_path / "export.zip", _ZIP_FOLLOWERS, _ZIP_FOLLOWING)
+        parser = ManualExportParser()
+
+        # First run — extracts
+        parser.parse_export_directory(zip_path)
+        assert (tmp_path / "export").is_dir()
+
+        # Corrupt the ZIP so a re-extraction attempt would fail
+        zip_path.write_bytes(b"not a zip")
+
+        # Second run — must use existing directory, not try to re-extract
+        parser.parse_export_directory(zip_path)
+
+    def test_invalid_zip_raises_value_error(self, tmp_path):
+        """A .zip file that is not a valid ZIP archive raises ValueError."""
+        fake_zip = tmp_path / "export.zip"
+        fake_zip.write_bytes(b"this is not a zip file")
+        with pytest.raises(ValueError, match="not a valid ZIP"):
+            ManualExportParser().parse_export_directory(fake_zip)

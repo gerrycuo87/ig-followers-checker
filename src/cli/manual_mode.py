@@ -134,6 +134,8 @@ def run_manual_mode(args: argparse.Namespace) -> int:
                 return 1
 
         # Parse export files
+        if export_path.suffix.lower() == '.zip':
+            print("\n📦 ZIP archive detected — extracting...")
         print("\n🔍 Parsing Instagram export...")
         parser = ManualExportParser()
         followers, following = parser.parse_export_directory(export_path)
